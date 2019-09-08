@@ -1,53 +1,92 @@
-" Charlie's Vim Config
+:set tabstop=2
+:set shiftwidth=2
+:set number
+:set colorcolumn=80
+:filetype plugin on
+:set mouse=r
+:highlight ColorColumn ctermbg=4
+:set list
+vmap "+y :!xclip -f -sel clip
+map "+p :r!xclip -o -sel clip
+map <C-n> :NERDTreeToggle<CR>
 
-syntax enable " turn on syntax highlighting
-set background=dark " use a dark background
-colorscheme base16-default-dark " use the base16 colorscheme, irrelevant which as inherits from terminal
-set path=$PWD/** " use the current working directory as the path
-set nocompatible " disable compatibility features
-set wildmenu " show command suggestions
-set showmatch " highlight matching parenthesis
-set incsearch " search while typing
-set hlsearch " mark matches to searches
-set ignorecase " Make searches case insensitive
-set smartcase " (Unless they contain a capital letter)
-set scrolloff=5 " keep 5 lines between top/bottom of screen and cursor
-set noerrorbells " i don't make mistakes, so I don't need the bells
-set colorcolumn=80 " draw a column to guide line length
-set nowrap " don't wrap lines
-set lazyredraw " only redraw vim when required
-set laststatus=0 " don't show the filename at the bottom of window (because it's at the top)
-set ff=unix
-set complete-=i
-set autowrite " write when closing files, and running build commands
-set completeopt=longest,menuone
+" For closetag plugin
+let g:closetag_filetypes = 'html,xhtml,phtml'
 
-set undofile " maintain undo history
-set undodir=~/.vim/.undo/
-set backupdir=~/.vim/backup/
-set directory=~/.vim/.swp/
+execute pathogen#infect()
 
-set foldenable " enable code folding
-set foldmethod=indent " use indentation to fold
-set foldlevelstart=2 " start folding after 2 levels of nesting
-set foldnestmax=10 " don't nest folds more than 10 times
+:set expandtab
+"set runtimepath^=~/.vim/bundle/ctrlp.vim
+"set runtimepath^=~/.vim/bundle/vim-wordmotion
+"set runtimepath^=~/.vim/bundle/nerdcommenter
 
-set number numberwidth=3 " show numbers column
-
-set shiftwidth=4 " the default is 8?
-
-set smarttab smartindent
-set tabstop=4
-set list listchars=tab:>-
-
-set backspace=indent,eol,start " backspace behavior
-
-" must be in .vimrc :(
-let g:deoplete#enable_at_startup = 1
-let g:terraform_fmt_on_save = 1
-
-source ~/.vim/ft_overrides.vim
-source ~/.vim/mappings.vim
-source ~/.vim/plugins.vim
-source ~/.vim/autocommands.vim
-source ~/.vim/highlighting.vim
+set tabline=%!MyTabLine()  " custom tab pages line
+function MyTabLine()
+        let s = '' " complete tabline goes here
+        " loop through each tab page
+        for t in range(tabpagenr('$'))
+                " set highlight
+                if t + 1 == tabpagenr()
+                        let s .= '%#TabLineSel#'
+                else
+                        let s .= '%#TabLine#'
+                endif
+                " set the tab page number (for mouse clicks)
+                let s .= '%' . (t + 1) . 'T'
+                let s .= ' '
+                " set page number string
+                let s .= t + 1 . ' '
+                " get buffer names and statuses
+                let n = ''      "temp string for buffer names while we loop and check buftype
+                let m = 0       " &modified counter
+                let bc = len(tabpagebuflist(t + 1))     "counter to avoid last ' '
+                " loop through each buffer in a tab
+                for b in tabpagebuflist(t + 1)
+                        " buffer types: quickfix gets a [Q], help gets [H]{base fname}
+                        " others get 1dir/2dir/3dir/fname shortened to 1/2/3/fname
+                        if getbufvar( b, "&buftype" ) == 'help'
+                                let n .= '[H]' . fnamemodify( bufname(b), ':t:s/.txt$//' )
+                        elseif getbufvar( b, "&buftype" ) == 'quickfix'
+                                let n .= '[Q]'
+                        else
+                                let n .= pathshorten(bufname(b))
+                        endif
+                        " check and ++ tab's &modified count
+                        if getbufvar( b, "&modified" )
+                                let m += 1
+                        endif
+                        " no final ' ' added...formatting looks better done later
+                        if bc > 1
+                                let n .= ' '
+                        endif
+                        let bc -= 1
+                endfor
+                " add modified label [n+] where n pages in tab are modified
+                if m > 0
+                        let s .= '[' . m . '+]'
+                endif
+                " select the highlighting for the buffer names
+                " my default highlighting only underlines the active tab
+                " buffer names.
+                if t + 1 == tabpagenr()
+                        let s .= '%#TabLineSel#'
+                else
+                        let s .= '%#TabLine#'
+                endif
+                " add buffer names
+                if n == ''
+                        let s.= '[New]'
+                else
+                        let s .= n
+                endif
+                " switch to no underlining and add final space to buffer list
+                let s .= ' '
+        endfor
+        " after the last tab fill with TabLineFill and reset tab page nr
+        let s .= '%#TabLineFill#%T'
+        " right-align the label to close the current tab page
+        if tabpagenr('$') > 1
+                let s .= '%=%#TabLineFill#%999Xclose'
+        endif
+        return s
+endfunction
